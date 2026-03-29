@@ -36,7 +36,12 @@ public class 玩家 {
     public int 魅惑层数;
     public int 狂暴层数;
     public int 冰冻层数;
-    
+
+    // 中性效果（不可选中）
+    public int 不可选中层数 = 0;
+    private int 待施加不可选中层数 = 0;   // 延迟施加暂存
+    public boolean 脱战 = false;           // 暂未实现
+
     // 加速层数
     public int 加速层数;
     
@@ -93,6 +98,7 @@ public class 玩家 {
     public void 设置魅惑层数(int 层数) { 魅惑层数 = Math.min(10, Math.max(0, 层数)); }
     public void 设置狂暴层数(int 层数) { 狂暴层数 = Math.min(10, Math.max(0, 层数)); }
     public void 设置冰冻层数(int 层数) { 冰冻层数 = Math.min(10, Math.max(0, 层数)); }
+    public void 设置不可选中层数(int 层数) { 不可选中层数 = Math.min(10, Math.max(0, 层数)); }
     public void 设置加速层数(int 层数) { 加速层数 = Math.min(10, Math.max(0, 层数)); }
     public void 设置铁壁层数(int 层数) { 铁壁层数 = Math.min(10, Math.max(0, 层数)); }
     public void 设置神谕层数(int 层数) { 神谕层数 = Math.min(10, Math.max(0, 层数)); }
@@ -101,7 +107,29 @@ public class 玩家 {
     public void 增加铁壁层数(int 层数) { 设置铁壁层数(铁壁层数 + 层数); }
     public void 增加神谕层数(int 层数) { 设置神谕层数(神谕层数 + 层数); }
     public void 增加冰冻层数(int 层数) { 设置冰冻层数(冰冻层数 + 层数); }
+    public void 增加不可选中层数(int 层数) { 设置不可选中层数(不可选中层数 + 层数); }
     
+    // 延迟施加
+    public void 设置待施加不可选中层数(int 层数) {
+        待施加不可选中层数 = Math.min(10, Math.max(0, 层数));
+    }
+    public void 应用延迟不可选中() {
+        if (待施加不可选中层数 > 0) {
+            增加不可选中层数(待施加不可选中层数);
+            待施加不可选中层数 = 0;
+        }
+    }
+    // 判断是否不可被他人选中
+    public boolean 是否不可被他人选中() {
+        return 不可选中层数 > 0 || 脱战;
+    }
+    // 全局清除（每个行动窗口开始时调用）
+    public void 全局清除不可选中() {
+        if (不可选中层数 > 0) {
+            不可选中层数--;
+        }
+    }
+
     // 行动窗口
     public void 执行行动窗口() {
         开始判定阶段();
@@ -150,6 +178,10 @@ public class 玩家 {
                     } else if (狂暴层数 > 0) {
                         if (Math.random() < 0.5) 实际目标 = this;
                     }
+                }
+                // 检查最终目标是否可被他人选中（自己打自己不受限）
+                if (实际目标 != this && 实际目标.是否不可被他人选中()) {
+                    continue; // 目标不可选中，本次出牌无效，重新选择
                 }
                 
                 牌.使用效果(this, 实际目标);
