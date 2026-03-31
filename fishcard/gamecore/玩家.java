@@ -37,10 +37,13 @@ public class 玩家 {
     public int 狂暴层数;
     public int 冰冻层数;
 
-    // 中性效果（不可选中）
+    // 中性效果
     public int 不可选中层数 = 0;
     private int 待施加不可选中层数 = 0;   // 延迟施加暂存
     public boolean 脱战 = false;           // 暂未实现
+
+    // 脱战状态
+    private int 脱战剩余窗口数 = 0;   // 剩余脱战窗口数，>0 表示处于脱战状态
 
     // 加速层数
     public int 加速层数;
@@ -68,6 +71,7 @@ public class 玩家 {
     
     // 智消耗
     public boolean 消耗智换牌(卡牌 要弃的牌) {
+        if (脱战剩余窗口数 > 0) return false;   // 脱战中不能行动
         if (get智() < 1) return false;
         int 消耗后天 = Math.min(后天智, 1);
         后天智 -= 消耗后天;
@@ -83,6 +87,7 @@ public class 玩家 {
     
     // 敏消耗
     public boolean 消耗敏(int 消耗量) {
+        if (脱战剩余窗口数 > 0) return false;
         int 总敏 = get敏();
         if (总敏 < 消耗量) return false;
         int 消耗后天 = Math.min(后天敏, 消耗量);
@@ -108,6 +113,18 @@ public class 玩家 {
     public void 增加神谕层数(int 层数) { 设置神谕层数(神谕层数 + 层数); }
     public void 增加冰冻层数(int 层数) { 设置冰冻层数(冰冻层数 + 层数); }
     public void 增加不可选中层数(int 层数) { 设置不可选中层数(不可选中层数 + 层数); }
+
+    // 脱战控制
+    public void 设置脱战剩余窗口数(int 剩余) {
+        脱战剩余窗口数 = Math.max(0, 剩余);
+    }
+    public int 获取脱战剩余窗口数() {
+        return 脱战剩余窗口数;
+    }
+    // 判断是否处于脱战状态
+    public boolean 是否脱战中() {
+        return 脱战剩余窗口数 > 0;
+    }
     
     // 延迟施加
     public void 设置待施加不可选中层数(int 层数) {
@@ -121,7 +138,7 @@ public class 玩家 {
     }
     // 判断是否不可被他人选中
     public boolean 是否不可被他人选中() {
-        return 不可选中层数 > 0 || 脱战;
+        return 不可选中层数 > 0 || 脱战剩余窗口数 > 0;   // 脱战期间也不可被选中
     }
     // 全局清除（每个行动窗口开始时调用）
     public void 全局清除不可选中() {
@@ -131,7 +148,18 @@ public class 玩家 {
     }
 
     // 行动窗口
+    
+    // 强制结束当前行动窗口（供卡牌使用）
+    public void 强制结束行动() {
+        主动结束 = true;
+    }
+
     public void 执行行动窗口() {
+        // 脱战：跳过整个行动窗口
+        if (脱战剩余窗口数 > 0) {
+            脱战剩余窗口数--;
+            return;   // 不执行任何阶段
+        }
         开始判定阶段();
         玩家行动阶段();
         结束判定阶段();
@@ -221,6 +249,7 @@ public class 玩家 {
     
     // ==================== 被动响应 ====================
     public boolean 尝试响应被动(玩家 攻击方, 伤害类型 伤害类型) {
+        if (脱战剩余窗口数 > 0) return false;   // 脱战中无法响应
         List<卡牌> 可用回避牌 = new ArrayList<>();
         for (卡牌 牌 : 手牌) {
             if (牌 instanceof 回避 && 牌.是否被动) {
