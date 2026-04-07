@@ -93,20 +93,20 @@ public class 玩家 {
     }
     
     // 脱战控制
-    public int 获取脱战剩余窗口数() {
+    public int 获取脱战计数() {
         return 脱战计数;
     }
     // 判断是否处于脱战状态
-    public boolean 是否脱战中() {
+    public boolean 是否脱战() {
         return 脱战计数 > 0;
     }
     
     // 判断是否不可被他人选中
-    public boolean 是否不可被他人选中() {
+    public boolean 是否被忽略() {
         return 忽略计数 > 0 || 脱战计数 > 0;   // 脱战期间也不可被选中
     }
     // 不可选中倒计时
-    public void 全局清除不可选中() {
+    public void 忽略计数全局倒计时() {
         if (忽略计数 > 0) {
             忽略计数--;
         }
@@ -114,7 +114,7 @@ public class 玩家 {
     // ============================== 玩家动作 ==============================
     
     // 智消耗
-    public boolean 消耗智换牌(卡牌 要弃的牌) {
+    public boolean 消耗智(卡牌 要弃的牌) {
         if (脱战计数 > 0) return false;   // 脱战中不能行动
         if (get智() < 1) return false;
         int 消耗后天 = Math.min(后天智, 1);
@@ -202,7 +202,7 @@ public class 玩家 {
                     }
                 }
                 // 检查最终目标是否可被他人选中（自己打自己不受限）
-                if (实际目标 != this && 实际目标.是否不可被他人选中()) {
+                if (实际目标 != this && 实际目标.是否被忽略()) {
                     continue; // 目标不可选中，本次出牌无效，重新选择
                 }
                 
