@@ -4,7 +4,7 @@ import cards.回避;
 import java.util.*;
 
 public class 玩家 {
-    // 数值（先天+后天）
+    // ============================== 数值（先天+后天）==============================
     public int 先天攻, 后天攻;
     public int 先天防, 后天防;
     public int 先天魔, 后天魔;
@@ -20,58 +20,102 @@ public class 玩家 {
     public int get敏() { return 先天敏 + 后天敏; }
     public int get智() { return 先天智 + 后天智; }
     
-    // 状态
+    // ============================== 状态 ==============================
     public int 当前血量;
     public int 血量上限;
     public int 手牌上限 = 3;
     public List<卡牌> 手牌 = new ArrayList<>();
-    
     public List<增益> 增益记录 = new ArrayList<>();
-    public int 铁壁层数 = 0;
-    public int 神谕层数 = 0;
+
+    // ============================== 效果 ==============================
+
+    // 正面效果
+    public int 铁壁计数 = 0;
+    public int 神谕计数 = 0;
+    public int 加速计数;
     
-    // 负面层数
-    public int 中毒层数;
-    public int 诅咒层数;
-    public int 魅惑层数;
-    public int 狂暴层数;
-    public int 冰冻层数;
+    // 负面效果
+    public int 中毒计数;
+    public int 诅咒计数;
+    public int 魅惑计数;
+    public int 狂暴计数;
+    public int 冰冻计数;
 
     // 中性效果
-    public int 不可选中层数 = 0;
-    private int 待施加不可选中层数 = 0;   // 延迟施加暂存
+    public int 忽略计数 = 0;
+    private int 待施加不可选中计数 = 0;   // 延迟施加暂存
     public boolean 脱战 = false;           // 暂未实现
+    private int 脱战计数 = 0;   // 剩余脱战窗口数，>0 表示处于脱战状态
 
-    // 脱战状态
-    private int 脱战剩余窗口数 = 0;   // 剩余脱战窗口数，>0 表示处于脱战状态
+    // 设置计数
+    public void 设置中毒计数(int 计数) { 中毒计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置诅咒计数(int 计数) { 诅咒计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置魅惑计数(int 计数) { 魅惑计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置狂暴计数(int 计数) { 狂暴计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置冰冻计数(int 计数) { 冰冻计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置加速计数(int 计数) { 加速计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置铁壁计数(int 计数) { 铁壁计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置神谕计数(int 计数) { 神谕计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置忽略计数(int 计数) { 忽略计数 = Math.min(10, Math.max(0, 计数)); }
+    public void 设置脱战计数(int 剩余) { 脱战计数 = Math.max(0, 剩余); }
 
-    // 加速层数
-    public int 加速层数;
     
-    // 行动资源
+    // 增加计数方法
+    public void 增加铁壁计数(int 计数) { 设置铁壁计数(铁壁计数 + 计数); }
+    public void 增加神谕计数(int 计数) { 设置神谕计数(神谕计数 + 计数); }
+    public void 增加冰冻计数(int 计数) { 设置冰冻计数(冰冻计数 + 计数); }
+    public void 增加忽略计数(int 计数) { 设置忽略计数(忽略计数 + 计数); }
+    
+    // 延迟施加
+    public void 设置延迟忽略计数(int 计数) {
+        待施加不可选中计数 = Math.min(10, Math.max(0, 计数));
+    }
+    public void 延迟增加忽略计数() {
+        if (待施加不可选中计数 > 0) {
+            增加忽略计数(待施加不可选中计数);
+            待施加不可选中计数 = 0;
+        }
+    }
+    
+    // ============================== 行动辅助 ==============================
     public int 基础出牌机会;
-    
-    // 游戏引用
     public 游戏 所属游戏;
-    
-    // 主动结束标志
-    private boolean 主动结束 = false;
-    // 冰冻跳过标志
-    private boolean 跳过行动阶段 = false;
+    private boolean 主动结束行动 = false;   // 主动结束行动窗口的标志
+    private boolean 跳过行动阶段 = false;   //因冰冻效果导致跳过行动窗口的标志
     
     // 抽牌与补牌
     public void 抽牌() {
         卡牌 新牌 = 所属游戏.从抽牌堆抽一张();
         if (新牌 != null) 手牌.add(新牌);
     }
-    
     public void 补满手牌() {
         while (手牌.size() < 手牌上限) 抽牌();
     }
     
+    // 脱战控制
+    public int 获取脱战剩余窗口数() {
+        return 脱战计数;
+    }
+    // 判断是否处于脱战状态
+    public boolean 是否脱战中() {
+        return 脱战计数 > 0;
+    }
+    
+    // 判断是否不可被他人选中
+    public boolean 是否不可被他人选中() {
+        return 忽略计数 > 0 || 脱战计数 > 0;   // 脱战期间也不可被选中
+    }
+    // 不可选中倒计时
+    public void 全局清除不可选中() {
+        if (忽略计数 > 0) {
+            忽略计数--;
+        }
+    }
+    // ============================== 玩家动作 ==============================
+    
     // 智消耗
     public boolean 消耗智换牌(卡牌 要弃的牌) {
-        if (脱战剩余窗口数 > 0) return false;   // 脱战中不能行动
+        if (脱战计数 > 0) return false;   // 脱战中不能行动
         if (get智() < 1) return false;
         int 消耗后天 = Math.min(后天智, 1);
         后天智 -= 消耗后天;
@@ -87,7 +131,7 @@ public class 玩家 {
     
     // 敏消耗
     public boolean 消耗敏(int 消耗量) {
-        if (脱战剩余窗口数 > 0) return false;
+        if (脱战计数 > 0) return false;
         int 总敏 = get敏();
         if (总敏 < 消耗量) return false;
         int 消耗后天 = Math.min(后天敏, 消耗量);
@@ -97,67 +141,17 @@ public class 玩家 {
         return true;
     }
     
-    // 设置层数
-    public void 设置中毒层数(int 层数) { 中毒层数 = Math.min(10, Math.max(0, 层数)); }
-    public void 设置诅咒层数(int 层数) { 诅咒层数 = Math.min(10, Math.max(0, 层数)); }
-    public void 设置魅惑层数(int 层数) { 魅惑层数 = Math.min(10, Math.max(0, 层数)); }
-    public void 设置狂暴层数(int 层数) { 狂暴层数 = Math.min(10, Math.max(0, 层数)); }
-    public void 设置冰冻层数(int 层数) { 冰冻层数 = Math.min(10, Math.max(0, 层数)); }
-    public void 设置不可选中层数(int 层数) { 不可选中层数 = Math.min(10, Math.max(0, 层数)); }
-    public void 设置加速层数(int 层数) { 加速层数 = Math.min(10, Math.max(0, 层数)); }
-    public void 设置铁壁层数(int 层数) { 铁壁层数 = Math.min(10, Math.max(0, 层数)); }
-    public void 设置神谕层数(int 层数) { 神谕层数 = Math.min(10, Math.max(0, 层数)); }
-    
-    // 增加层数方法
-    public void 增加铁壁层数(int 层数) { 设置铁壁层数(铁壁层数 + 层数); }
-    public void 增加神谕层数(int 层数) { 设置神谕层数(神谕层数 + 层数); }
-    public void 增加冰冻层数(int 层数) { 设置冰冻层数(冰冻层数 + 层数); }
-    public void 增加不可选中层数(int 层数) { 设置不可选中层数(不可选中层数 + 层数); }
-
-    // 脱战控制
-    public void 设置脱战剩余窗口数(int 剩余) {
-        脱战剩余窗口数 = Math.max(0, 剩余);
-    }
-    public int 获取脱战剩余窗口数() {
-        return 脱战剩余窗口数;
-    }
-    // 判断是否处于脱战状态
-    public boolean 是否脱战中() {
-        return 脱战剩余窗口数 > 0;
-    }
-    
-    // 延迟施加
-    public void 设置待施加不可选中层数(int 层数) {
-        待施加不可选中层数 = Math.min(10, Math.max(0, 层数));
-    }
-    public void 应用延迟不可选中() {
-        if (待施加不可选中层数 > 0) {
-            增加不可选中层数(待施加不可选中层数);
-            待施加不可选中层数 = 0;
-        }
-    }
-    // 判断是否不可被他人选中
-    public boolean 是否不可被他人选中() {
-        return 不可选中层数 > 0 || 脱战剩余窗口数 > 0;   // 脱战期间也不可被选中
-    }
-    // 全局清除（每个行动窗口开始时调用）
-    public void 全局清除不可选中() {
-        if (不可选中层数 > 0) {
-            不可选中层数--;
-        }
-    }
-
     // 行动窗口
     
     // 强制结束当前行动窗口（供卡牌使用）
     public void 强制结束行动() {
-        主动结束 = true;
+        主动结束行动 = true;
     }
 
     public void 执行行动窗口() {
         // 脱战：跳过整个行动窗口
-        if (脱战剩余窗口数 > 0) {
-            脱战剩余窗口数--;
+        if (脱战计数 > 0) {
+            脱战计数--;
             return;   // 不执行任何阶段
         }
         开始判定阶段();
@@ -167,19 +161,19 @@ public class 玩家 {
     
     public void 开始判定阶段() {
         // 中毒
-        if (中毒层数 > 0) {
+        if (中毒计数 > 0) {
             词条.modify(this, -1, 0, null);
-            中毒层数--;
-            if (中毒层数 < 0) 中毒层数 = 0;
+            中毒计数--;
+            if (中毒计数 < 0) 中毒计数 = 0;
         }
         // 神谕
-        if (神谕层数 > 0) {
-            神谕层数--;
+        if (神谕计数 > 0) {
+            神谕计数--;
             int 新血量 = Math.min(血量上限, 当前血量 + 1);
             当前血量 = 新血量;
         }
-        // 冰冻：若有层数，设置跳过行动标志（不移除层数，移除在结束阶段）
-        if (冰冻层数 > 0) {
+        // 冰冻：若有计数，设置跳过行动标志（不移除计数，移除在结束阶段）
+        if (冰冻计数 > 0) {
             跳过行动阶段 = true;
         }
         // 其他开始判定效果可在此扩展...
@@ -192,8 +186,8 @@ public class 玩家 {
             return;
         }
         基础出牌机会 = 1;
-        主动结束 = false;  // 重置主动结束标志
-        while ((基础出牌机会 > 0 || 加速层数 > 0) && !主动结束) {
+        主动结束行动 = false;  // 重置主动结束标志
+        while ((基础出牌机会 > 0 || 加速计数 > 0) && !主动结束行动) {
             行动选择 选择 = 获取玩家选择();
             if (选择.类型 == 行动类型.出牌) {
                 卡牌 牌 = 选择.卡牌;
@@ -201,9 +195,9 @@ public class 玩家 {
                 
                 玩家 实际目标 = 选择.目标;
                 if (牌.是否攻击牌) {
-                    if (魅惑层数 > 0) {
+                    if (魅惑计数 > 0) {
                         实际目标 = this;
-                    } else if (狂暴层数 > 0) {
+                    } else if (狂暴计数 > 0) {
                         if (Math.random() < 0.5) 实际目标 = this;
                     }
                 }
@@ -215,41 +209,41 @@ public class 玩家 {
                 牌.使用效果(this, 实际目标);
                 if (基础出牌机会 > 0) {
                     基础出牌机会--;
-                } else if (加速层数 > 0) {
-                    加速层数--;
+                } else if (加速计数 > 0) {
+                    加速计数--;
                 }
                 手牌.remove(牌);
                 补满手牌();
             } else if (选择.类型 == 行动类型.使用技能) {
                 // 技能暂未实现
             } else if (选择.类型 == 行动类型.结束行动) {
-                主动结束 = true;  // 标记玩家主动结束行动
+                主动结束行动 = true;  // 标记玩家主动结束行动
             }
         }
     }
     
-    public void 增加加速层数(int 层数) {
-        int 新层数 = 加速层数 + 层数;
-        加速层数 = Math.min(10, Math.max(0, 新层数));
+    public void 增加加速计数(int 计数) {
+        int 新计数 = 加速计数 + 计数;
+        加速计数 = Math.min(10, Math.max(0, 新计数));
     }
     
     public void 结束判定阶段() {
-        if (魅惑层数 > 0) 魅惑层数--;
-        if (狂暴层数 > 0) 狂暴层数--;
-        if (冰冻层数 > 0) 冰冻层数--;
-        加速层数 = 0;
+        if (魅惑计数 > 0) 魅惑计数--;
+        if (狂暴计数 > 0) 狂暴计数--;
+        if (冰冻计数 > 0) 冰冻计数--;
+        加速计数 = 0;
         if (当前血量 <= 0) 死亡();
     }
     
     public boolean 是否主动结束行动() {
-        return 主动结束;
+        return 主动结束行动;
     }
     
     public void 死亡() { }
     
     // ==================== 被动响应 ====================
     public boolean 尝试响应被动(玩家 攻击方, 伤害类型 伤害类型) {
-        if (脱战剩余窗口数 > 0) return false;   // 脱战中无法响应
+        if (脱战计数 > 0) return false;   // 脱战中无法响应
         List<卡牌> 可用回避牌 = new ArrayList<>();
         for (卡牌 牌 : 手牌) {
             if (牌 instanceof 回避 && 牌.是否被动) {
