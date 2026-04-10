@@ -10,7 +10,7 @@ public abstract class 卡牌 {
     public boolean 是否被动;
     
     // 词条标签
-    public boolean 是否攻击牌 = false;
+    public boolean 是否攻击 = false;
     public boolean 是否增幅 = false;
     public boolean 是否治愈 = false;
     public boolean 是否净化 = false;

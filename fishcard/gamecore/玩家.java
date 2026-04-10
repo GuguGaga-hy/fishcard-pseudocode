@@ -43,8 +43,8 @@ public class 玩家 {
 
     // 中性效果
     public int 忽略计数 = 0;
-    private int 待施加不可选中计数 = 0;   // 延迟施加暂存
-    public boolean 脱战 = false;           // 暂未实现
+    private int 延迟忽略计数 = 0;   // 延迟施加暂存
+    public boolean 脱战状态 = false;
     private int 脱战计数 = 0;   // 剩余脱战窗口数，>0 表示处于脱战状态
 
     // 设置计数
@@ -59,6 +59,9 @@ public class 玩家 {
     public void 设置忽略计数(int 计数) { 忽略计数 = Math.min(10, Math.max(0, 计数)); }
     public void 设置脱战计数(int 剩余) { 脱战计数 = Math.max(0, 剩余); }
 
+    public void 设置延迟忽略计数(int 计数) {
+        延迟忽略计数 = Math.min(10, Math.max(0, 计数));
+    }
     
     // 增加计数方法
     public void 增加铁壁计数(int 计数) { 设置铁壁计数(铁壁计数 + 计数); }
@@ -66,14 +69,10 @@ public class 玩家 {
     public void 增加冰冻计数(int 计数) { 设置冰冻计数(冰冻计数 + 计数); }
     public void 增加忽略计数(int 计数) { 设置忽略计数(忽略计数 + 计数); }
     
-    // 延迟施加
-    public void 设置延迟忽略计数(int 计数) {
-        待施加不可选中计数 = Math.min(10, Math.max(0, 计数));
-    }
     public void 延迟增加忽略计数() {
-        if (待施加不可选中计数 > 0) {
-            增加忽略计数(待施加不可选中计数);
-            待施加不可选中计数 = 0;
+        if (延迟忽略计数 > 0) {
+            增加忽略计数(延迟忽略计数);
+            延迟忽略计数 = 0;
         }
     }
     
@@ -81,7 +80,7 @@ public class 玩家 {
     public int 基础出牌机会;
     public 游戏 所属游戏;
     private boolean 主动结束行动 = false;   // 主动结束行动窗口的标志
-    private boolean 跳过行动阶段 = false;   //因冰冻效果导致跳过行动窗口的标志
+    private boolean 被动跳过行动 = false;   //因冰冻效果导致跳过行动窗口的标志
     
     // 抽牌与补牌
     public void 抽牌() {
@@ -174,15 +173,15 @@ public class 玩家 {
         }
         // 冰冻：若有计数，设置跳过行动标志（不移除计数，移除在结束阶段）
         if (冰冻计数 > 0) {
-            跳过行动阶段 = true;
+            被动跳过行动 = true;
         }
         // 其他开始判定效果可在此扩展...
     }
     
     public void 玩家行动阶段() {
         // 如果因冰冻跳过，则直接返回（不执行任何行动）
-        if (跳过行动阶段) {
-            跳过行动阶段 = false;  // 重置标志，避免影响下一回合
+        if (被动跳过行动) {
+            被动跳过行动 = false;  // 重置标志，避免影响下一回合
             return;
         }
         基础出牌机会 = 1;
@@ -194,7 +193,7 @@ public class 玩家 {
                 if (牌.是否被动) continue;
                 
                 玩家 实际目标 = 选择.目标;
-                if (牌.是否攻击牌) {
+                if (牌.是否攻击) {
                     if (魅惑计数 > 0) {
                         实际目标 = this;
                     } else if (狂暴计数 > 0) {
